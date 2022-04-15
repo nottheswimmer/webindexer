@@ -1,0 +1,96 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Indexer</title>
+</head>
+<body>
+<main>
+    <form action="{{ url_for('count') }}" method="post" id="count">
+        <label>
+            <input type="text" name="url" placeholder="URL">
+        </label>
+        <label>
+            <input type="text" name="keyword" placeholder="Keyword">
+        </label>
+        <input type="submit" value="Count">
+    </form>
+    <template id="result-template">
+        <div class="result">
+            <h2>Result</h2>
+            <p>
+                <span>URL:</span>
+                <span class="url"></span>
+            </p>
+            <p>
+                <span>Keyword:</span>
+                <span class="keyword"></span>
+            </p>
+            <p>
+                <span>Count:</span>
+                <span class="count"></span>
+            </p>
+            <ul class="errors"></ul>
+        </div>
+    </template>
+    <div id="results"></div>
+</main>
+<script>
+    function buildResult(url, keyword, count, errors) {
+        const template = document.getElementById('result-template');
+        const clone = document.importNode(template.content, true);
+        clone.querySelector('.url').textContent = url;
+        clone.querySelector('.keyword').textContent = keyword;
+        clone.querySelector('.count').textContent = count;
+        if (errors?.length) {
+            const errorList = clone.querySelector('.errors');
+            const errorParagraph = document.createElement('p');
+            errorParagraph.textContent = 'Errors:';
+            errorList.appendChild(errorParagraph);
+            errors.forEach(function (error) {
+                const li = document.createElement('li');
+                li.textContent = error.message;
+                errorList.appendChild(li);
+            });
+        }
+        return clone;
+    }
+
+    document.getElementById('count').addEventListener('submit', function (e) {
+        e.preventDefault();
+
+        const form = e.target;
+        const payload = {
+            url: form.elements.url.value,
+            keyword: form.elements.keyword.value
+        };
+
+        const results = document.getElementById('results');
+        const placeholder = buildResult(payload.url, payload.keyword, '...', null);
+        placeholder.querySelector('.result').classList.add('placeholder');
+        results.insertBefore(placeholder, results.firstChild);
+
+        fetch(form.action, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify(payload)
+        }).then(function (response) {
+            return response.json();
+        }).then(function (r) {
+            const count = r.result ? r.result.count : 'N/A';
+            const errors = r.errors ? r.errors : [];
+            const result = buildResult(payload.url, payload.keyword, count, errors);
+            results.insertBefore(result, results.firstChild);
+            results.querySelector('.placeholder')?.remove();
+            // If there's over 3 results, remove the last one
+            while (results.childElementCount > 3) {
+                results.removeChild(results.lastChild);
+            }
+        });
+
+    });
+</script>
+</body>
+</html>
